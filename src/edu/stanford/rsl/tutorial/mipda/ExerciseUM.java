@@ -4,6 +4,7 @@ import edu.stanford.rsl.conrad.data.numeric.Grid2D;
 import edu.stanford.rsl.conrad.data.numeric.Grid2DComplex;
 import edu.stanford.rsl.conrad.data.numeric.NumericPointwiseOperators;
 import edu.stanford.rsl.conrad.filtering.MeanFilteringTool;
+import edu.stanford.rsl.conrad.utils.FFTUtil;
 import edu.stanford.rsl.conrad.utils.ImageUtil;
 import ij.IJ;
 import ij.ImageJ;
@@ -92,15 +93,32 @@ public class ExerciseUM {
 		 * - look for the Conrad API filtering tool MeanFilteringTool and use it to compute the mean values
 		 * - weight the image by mu/mu_ij
 		 */
+		//double globalMean =0;
+		//for (int i = 0; i< grid.getNumberOfElements(); i++) {
+		//	globalMean += grid.getPixelValue(i);
+		//}
+		//globalMean/= grid.getNumberOfElements();
+		
+		//MeanFilteringTool meanFilteringTool = new MeanFilteringTool();
+		//meanFilteringTool.configure(kernelSize, kernelSize);
+		//Grid2D loaclMean = meanFilteringTool.applyToolToImage(grid);
+		
+		//for (int i = 0; i< grid.getWidth(); i++) {
+		//	for (int j = 0; j<grid.getHeight(); j++) {
+			//	float value = (float)(globalMean/loaclMean.getAtIndex(i, j));
+			//	grid.multiplyAtIndex(i, j, value);
+		//	}
+	//	}
+
 		
 		Grid2D corrected = (Grid2D) grid.clone();
 		
-		Grid2D mu_ij = null; //TODO: clone grid
+		Grid2D mu_ij = (Grid2D) grid.clone();; //TODO: clone grid
 		
 		MeanFilteringTool localMeanFilter = new MeanFilteringTool();
 		try {
-			//TODO // use configure() to configure localMeanFilter
-			//TODO // use the filter and applyToolToImage() such that mu_ij contains the result image of grid being average-filtered 
+			localMeanFilter.configure(kernelSize, kernelSize);//TODO // use configure() to configure localMeanFilter
+			localMeanFilter.applyToolToImage(mu_ij);//TODO // use the filter and applyToolToImage() such that mu_ij contains the result image of grid being average-filtered 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -122,10 +140,10 @@ public class ExerciseUM {
 					tempVal = eps;
 				}
 				else{
-					tempVal = 0; // TODO
+					tempVal = mu/mu_ij.getAtIndex(j, i); // TODO
 				}
 				
-				 // TODO: apply the bias field correction for the multiplicative model
+				corrected.multiplyAtIndex(j, i, tempVal);// TODO: apply the bias field correction for the multiplicative model
 			}
 		}
 		
@@ -137,10 +155,10 @@ public class ExerciseUM {
 		Grid2D corrected = (Grid2D) grid.clone();
 		Grid2DComplex fftimage = new Grid2DComplex(grid); // check the Grid size and look up zero-padding
 
-		// transform into Fourier domain		
-		// TODO: Fourier Forward Transform
-		// TODO: Shift origin point to the center
-
+		// transform into Fourier domain	
+		fftimage.transformForward();// TODO: Fourier Forward Transform
+		fftimage.fftshift();// TODO: Shift origin point to the center
+		fftimage.show("before filer");
 		for (int k = 0; k < fftimage.getHeight(); k++){
 			for (int l = 0; l < fftimage.getWidth(); l++){	
 				
@@ -148,16 +166,19 @@ public class ExerciseUM {
 				double fl = (l-fftimage.getWidth()/2.0d)/fftimage.getHeight()/grid.getSpacing()[1];
 				
 				/* Apply the reverse Gaussian filter from the lecture */
-				float val =  0;  // TODO
-				// TODO: setRealAtIndex for fftimage
-				// TODO: setImageAtIndex for fftimage
+				float val =  (float)(1-beta*Math.exp(-(fk*fk + fl*fl)/(2*sigma*sigma))) * fftimage.getRealAtIndex(l, k);  // TODO
+				fftimage.setRealAtIndex(l, k, val);// TODO: setRealAtIndex for fftimage
+				val =  (float)(1-beta*Math.exp(-(fk*fk + fl*fl)/(2*sigma*sigma))) * fftimage.getImagAtIndex(l, k);
+				fftimage.setImagAtIndex(l, k, val);// TODO: setImageAtIndex for fftimage
 			}
 		}
 
+		fftimage.show("after filter");
 		// transform back into spatial domain
-		// TODO: inverse shift origin for fftimage
-		// TODO: inverse Fourier Transform for fftimage
-			
+		fftimage.ifftshift();// TODO: inverse shift origin for fftimage
+		fftimage.transformInverse();// TODO: inverse Fourier Transform for fftimage
+		fftimage.show("transformed back");
+		
 		for (int i = 0; i < corrected.getHeight(); i++){
 			for (int j = 0; j < corrected.getWidth(); j++){
 				corrected.setAtIndex(j, i, fftimage.getRealAtIndex(j, i));
@@ -170,7 +191,7 @@ public class ExerciseUM {
 		
 		Grid2D returnGrid = new Grid2D(grid); // TODO: apply a hard frequency cut-off (high pass filter), ...
 		returnGrid = null; // ... look for the appropriate class method in this file
-		
+		///Grid2DComplex.frequencyCutoff(grid, cutoff)
 		return returnGrid;
 	}
 	

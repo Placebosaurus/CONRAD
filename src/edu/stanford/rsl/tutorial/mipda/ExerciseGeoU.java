@@ -9,6 +9,7 @@ import ij.ImageJ;
 import edu.stanford.rsl.conrad.data.numeric.InterpolationOperators;
 //import edu.stanford.rsl.conrad.data.numeric.NumericGridOperator;
 import edu.stanford.rsl.conrad.numerics.SimpleMatrix;
+import edu.stanford.rsl.conrad.numerics.SimpleMatrix.InversionType;
 import edu.stanford.rsl.conrad.numerics.SimpleOperators;
 import edu.stanford.rsl.conrad.numerics.SimpleVector;
 import edu.stanford.rsl.conrad.numerics.DecompositionSVD;
@@ -35,8 +36,8 @@ public class ExerciseGeoU {
 	Grid2D undistortedImage; // do not edit, member variable for the output image
 	
 	// number of lattice points
-	final int nx = 0;//TODO: define the number of lattice point: nx (Positive number and less than 20)
-	final int ny = 0;//TODO: define the number of lattice point: ny (Positive number and less than 20)
+	final int nx = 5;//TODO: define the number of lattice point: nx (Positive number and less than 20)
+	final int ny = 5;//TODO: define the number of lattice point: ny (Positive number and less than 20)
 	
 	float fx;
 	float fy;
@@ -142,8 +143,8 @@ public class ExerciseGeoU {
 		
 		// step size
 		// calculate the step size of the lattice points: fx and fy 
-		fx = 0; //TODO
-		fy = 0; //TODO
+		fx = imageWidth/nx; //TODO
+		fy = imageHeight/ny; //TODO
 		
 		// fill the distorted and undistorted lattice points 
 		// with data from the given correspondences
@@ -154,16 +155,22 @@ public class ExerciseGeoU {
 		Yd = new SimpleMatrix(ny,nx);
 		
 		for(int i = 0; i < nx; i++){
-			for(int j = 0; j < ny; j++){
-
-				// sample the distorted and undistorted grid points at the lattice points
-				//TODO: fill matrix Xu
-				//TODO: fill matrix Yu
-				//TODO: fill matrix Xd
-				//TODO: fill matrix Yd
-			}
+            for(int j = 0; j < ny; j++){
+                int xPos = (int) ((i+0.5)*fx);
+                int yPos = (int) ((j+0.5)*fy);
+                // sample the distorted and undistorted grid points at the lattice points
+                double valXu = xprime.getAtIndex(xPos, yPos);
+                double valYu = yprime.getAtIndex(xPos, yPos);
+                double valXd = x.getAtIndex(xPos, yPos);
+                double valYd = y.getAtIndex(xPos, yPos);
+                
+                Xu.setElementValue(j, i, valXu);
+                Yu.setElementValue(j, i, valYu);
+                Xd.setElementValue(j, i, valXd);
+                Yd.setElementValue(j, i, valYd);
+            }
 		}
-	}
+ }
 	
 	/** 2. Polynomial of degree d
 	 * Polynomial of degree d -> (d-1): extrema (e.g., d=5: 4 extrema)
@@ -179,10 +186,10 @@ public class ExerciseGeoU {
 		
 		// number of coefficients: numCoeff
 		// (hint: this is NOT the total number of multiplications!)
-		numCoeff = 0; //TODO
+		numCoeff = 21; // mit binomial coeffizient berechnen
 		
 		// number of correspondences: numCorresp
-		numCorresp =  0; //TODO
+		numCorresp =  Xd.getCols()*Xd.getRows(); //TODO
 		
 		// Printout of the used parameters
 		System.out.println("Polynom of degree: " + degree);
@@ -203,9 +210,9 @@ public class ExerciseGeoU {
 		A.zeros();
 		
 		// Realign the grid matrix into a vector for easier access in the next step
-		XuVector = new SimpleVector(numCorresp);
+		XuVector = new SimpleVector(numCorresp); 
 		YuVector = new SimpleVector(numCorresp);
-		XdVector = new SimpleVector(numCorresp);
+		XdVector = new SimpleVector(numCorresp); // distorted x depends on undistorted x and y coordinate!
 		YdVector = new SimpleVector(numCorresp);
 		
 		for(int i = 0; i < nx; i++){
@@ -221,12 +228,18 @@ public class ExerciseGeoU {
 		// Compute matrix A (coordinates from distorted image)
 		for(int r = 0; r < numCorresp; r++){
 			
-			int cc = 0;
+			int cc = 0; // collums
 			
 			for(int k = 0; k <= degree; k++){
 				for(int l = 0; l <= (degree-k); l++){
 					
 					// TODO: fill matrix A
+					double value = Math.pow(YdVector.getElement(r), l) * Math.pow(XdVector.getElement(r), k); //see slides 11 page 4
+					if(A.getRows() == r || A.getCols() == cc) {
+						int i = 0;
+					}
+					A.setElementValue(r, cc, value);
+					System.out.println(k +" . "+ l);
 					cc++;
 					
 				}
@@ -237,12 +250,14 @@ public class ExerciseGeoU {
 	public void computeDistortionCoeff(SimpleMatrix A, SimpleVector XuVector, SimpleVector YuVector){
 		
 		// Compute the pseudo-inverse of A with the help of the SVD (class: DecompositionSVD)
-		svd = null; // TODO
-	    A_pseudoinverse = null; // TODO
+		svd = new DecompositionSVD(A); // TODO
+		A_pseudoinverse = A.inverse(InversionType.INVERT_SVD);
+		//A_pseudoinverse = SimpleOperators.multiplyMatrices(svd.getU(),svd.getS().inverse(InversionType.INVERT_SVD));
+		//A_pseudoinverse = SimpleOperators.multiplyMatrices(A_pseudoinverse,svd.getV().transposed()); // TODO
 	  
 		// Compute the distortion coefficients (solve for known corresponding undistorted points)
-		u_vec = null;// TODO
-		v_vec = null;// TODO
+		u_vec = SimpleOperators.multiply(A_pseudoinverse, XuVector);// TODO
+		v_vec = SimpleOperators.multiply(A_pseudoinverse, YuVector);// TODO
 	}
 	
 	/**
@@ -269,10 +284,12 @@ public class ExerciseGeoU {
 				for(int k = 0; k <= degree; k++){
 					for(int l = 0; l <= degree - k; l++){
 						
-						val1 = 0;// TODO
-						val2 = 0;// TODO
+						val1 = (float) Math.pow(distortedImage.getAtIndex(i, j), k);// TODO
+						val2 = (float) Math.pow(distortedImage.getAtIndex(i, j), l);// TODO
 						
-						// TODO: fill xDist
+						
+						xDist.setAtIndex(i, j, (float)(u_vec.getElement(cc) * val1 * val2));// TODO: fill xDist  // wir benutzen hier das cc weil wir u und v als vektor gespeichert haben und mnicht als matrix was von der indexierung leicher gewesen waere.
+						yDist.setAtIndex(i, j, (float)(v_vec.getElement(cc) * val1 * val2));
 						// TODO: fill yDist
 						
 						cc++;
@@ -287,8 +304,9 @@ public class ExerciseGeoU {
 			for(int j = 0; j < imageHeight; j++){
 				
 				// hint: consider the fact that the coordinate origin is in the center of the image
-				val = 0;//TODO
+				val = 0;//TODO  // das hier hast du nicht gemacht weil du den code schon bekommen hast.
 				//TODO: fill grid_out
+				grid_out.setAtIndex(i, j, val);
 			}
 		}
 		
