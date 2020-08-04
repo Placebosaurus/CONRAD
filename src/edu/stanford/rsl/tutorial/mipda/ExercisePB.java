@@ -30,7 +30,7 @@ public class ExercisePB {
 	public enum RampFilterType {NONE, RAMLAK, SHEPPLOGAN};
 	boolean filterShownOnce = false;
 	
-	RampFilterType filterType = RampFilterType.NONE; //TODO: Select one of the following values: NONE, RAMLAK, SHEPPLOGAN
+	RampFilterType filterType = RampFilterType.RAMLAK; //TODO: Select one of the following values: NONE, RAMLAK, SHEPPLOGAN
 	// (make this choice when you have finished the rest of the exercise)
 	
 	SheppLogan sheppLoganPhantom;
@@ -125,7 +125,7 @@ public class ExercisePB {
 			ramp.show("Ramp Filter in Spatial Domain (rearranged for FFT-Shift)");
 		
 		// <your code> // TODO: Transform the filter into frequency domain (look for an appropriate method of Grid1DComplex)
-		
+		ramp.transformForward();
 		if(!filterShownOnce) {
 			
 			ramp.show("Ramp Filter in Frequency Domain");
@@ -134,6 +134,10 @@ public class ExercisePB {
 
 		Grid1DComplex projectionF = null;// TODO: Transform the input sinogram signal ...
 		// <your code> // ... into the frequency domain (hint: similar to the last TODO)
+		for(int i = 0; i<projectionF.getSize().length; i++) {
+			
+			//projectionF.setAtIndex(i, val);
+		}
 		
 		if (projectionF != null) {
 			for(int p = 0; p < projectionF.getSize()[0]; p++){
@@ -160,11 +164,13 @@ public class ExercisePB {
 		final float constantFactor = -1.f / ((float) ( Math.PI * Math.PI * deltaS * deltaS));
 		
 		// <your code>  // TODO: set correct value in filterGrid for zero frequency
+		filterGrid.setAtIndex(0, (float) (1/(4 * deltaS * deltaS)));
 		
 		for (int i = 1; i < paddedSize/2; ++i) { // the "positive wing" of the filter 
 			
-			if (false) {// TODO: condition -> only odd indices are nonzero
+			if (i%2 == 0) {// TODO: condition -> only odd indices are nonzero
 				// <your code> // TODO: use setAtIndex and the constant "constantFactor"
+				filterGrid.setAtIndex(i, constantFactor / (i*i));
 			}
 		}
 		
@@ -173,8 +179,9 @@ public class ExercisePB {
 		for (int i = paddedSize / 2; i < paddedSize; ++i) { 
 			
 			final int tmp = paddedSize - i; // now we go back from N/2 to 1
-			if (false) {// TODO: condition -> only odd indices are nonzero
+			if (i%2 == 0) {// TODO: condition -> only odd indices are nonzero
 				// <your code> // TODO: use setAtIndex and the constant "constantFactor"
+				filterGrid.setAtIndex(i, constantFactor / (i*i));
 			}
 		}
 	}
